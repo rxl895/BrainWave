@@ -18,3 +18,24 @@ The **Virtual Study Group Platform** is a web-based application designed to faci
 - **Other Technologies**: WebRTC (Real-time communication), OAuth 2.0 (Authentication), AWS/Heroku (Cloud Deployment)
 
 ## 📂 Project Structure
+
+## ⚡ Installation & Setup
+1. **Clone the Repository**  
+   ```bash
+   git clone https://github.com/yourusername/virtual-study-group.git
+   cd virtual-study-group
+   
+## Install Dependencies
+cd client
+npm install
+cd ../server
+npm install
+
+# Start the backend
+cd server
+npm start
+
+# Start the frontend
+cd ../client
+npm start
+
