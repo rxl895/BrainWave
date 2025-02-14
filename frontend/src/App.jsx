@@ -1,15 +1,19 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
+import React from 'react';
+import { Routes, Route, useNavigate } from 'react-router-dom';
+import DashboardPage from './assets/pages/DashBoardPage.jsx';
+import HomePage from './assets/pages/HomePage.jsx';
 import './App.css'
-import DashboardPage from './assets/pages/HomePage.jsx';
+
 
 const App = () => {
   return (
     <div className="min-h-screen bg-gray-50">
-      <DashboardPage />
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/dash" element={<DashboardPage />} />
+      </Routes>
     </div>
   );
 };
 
-export default App
+export default App;

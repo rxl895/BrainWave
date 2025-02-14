@@ -1,7 +1,9 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { BookOpen, Users, Video, Calendar, Award, Brain } from 'lucide-react';
 
 const HomePage = () => {
+  const navigate = useNavigate();
   return (
     <div className="min-h-screen bg-gradient-to-b from-purple-50 to-white">
       {/* Hero Section */}
@@ -13,9 +15,6 @@ const HomePage = () => {
           Your collaborative learning platform for better study experiences
         </p>
         <div className="flex justify-center gap-4">
-          <button className="rounded-lg bg-purple-600 px-6 py-3 text-white hover:bg-purple-700">
-            Get Started
-          </button>
           <button className="rounded-lg border border-purple-600 px-6 py-3 text-purple-600 hover:bg-purple-50">
             Learn More
           </button>
@@ -70,7 +69,10 @@ const HomePage = () => {
           <p className="mb-8 text-lg text-purple-100">
             Join thousands of students already using BrainWave to achieve their academic goals
           </p>
-          <button className="rounded-lg bg-white px-8 py-3 text-purple-600 hover:bg-purple-50">
+          <button 
+            onClick={() => navigate('/dash')}
+            className="rounded-lg bg-white px-8 py-3 text-purple-600 hover:bg-purple-50"
+          >
             Sign Up Now
           </button>
         </div>
