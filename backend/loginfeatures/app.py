@@ -44,11 +44,8 @@ oauth.register(
 
 @app.route("/")
 def home():
-    return render_template(
-        "home.html",
-        session=session.get("user"),
-        pretty=json.dumps(session.get("user"), indent=4),
-    )
+    return {"message": "Backend is running! Connect via API."}
+
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
