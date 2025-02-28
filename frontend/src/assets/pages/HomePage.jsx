@@ -1,9 +1,17 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
 import { BookOpen, Users, Video, Calendar, Award, Brain } from 'lucide-react';
+import { LoginButton } from '../../components/auth/LoginButton';
+import { useAuth } from '../../contexts/AuthContext';
+import { Navigate } from 'react-router-dom';
 
 const HomePage = () => {
-  const navigate = useNavigate();
+  const { user } = useAuth();
+
+  // Redirect to dashboard if already logged in
+  if (user) {
+    return <Navigate to="/dash" replace />;
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-purple-50 to-white">
       {/* Hero Section */}
@@ -69,12 +77,7 @@ const HomePage = () => {
           <p className="mb-8 text-lg text-purple-100">
             Join thousands of students already using BrainWave to achieve their academic goals
           </p>
-          <button 
-            onClick={() => navigate('/dash')}
-            className="rounded-lg bg-white px-8 py-3 text-purple-600 hover:bg-purple-50"
-          >
-            Sign Up Now
-          </button>
+          <LoginButton />
         </div>
       </section>
 
