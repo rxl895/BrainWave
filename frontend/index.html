@@ -8,11 +8,12 @@
     <link rel="stylesheet" href="style.css">
   </head>
   <body>
-    <header class="fade-in">
+    <header id="static-header" class="fade-in">
       Welcome to BrainWave
       <button id="theme-toggle">🌙</button>  <!-- Dark Mode Toggle Button -->
     </header>
-    <div class="container slide-in">
+
+    <div class="container slide-in"> <!-- Causing the misaligned elements below (outside react) -->
       <div id="root"></div>
       <button class="fade-in">Get Started</button>
     </div>
@@ -27,6 +28,13 @@
         } else {
           toggleButton.textContent = "🌙"; // Dark mode icon
         }
+      });
+    </script>
+    <script> /**Added script to hide the Welcome to Brainwave to clean landing page**/
+      window.addEventListener("DOMContentLoaded", () => {
+        setTimeout(() => {
+          document.getElementById("static-header").style.display = "none";
+        }, 100); // Hide it after 0.1s once React is ready
       });
     </script>
   </body>
