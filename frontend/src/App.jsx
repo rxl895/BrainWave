@@ -1,19 +1,23 @@
 import React from 'react';
-import { Routes, Route, useNavigate } from 'react-router-dom';
-import DashboardPage from './assets/pages/DashboardPage.jsx';
-import HomePage from './assets/pages/HomePage.jsx';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { AuthProvider } from './contexts/AuthContext';
+import HomePage from './assets/pages/HomePage';
+import DashboardPage from './assets/pages/DashboardPage';
+import { AuthCallback } from './components/auth/AuthCallback';
 import './App.css'
 
-
-const App = () => {
+function App() {
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Routes>
-        <Route path="/" element={<HomePage />} />
-        <Route path="/dash" element={<DashboardPage />} />
-      </Routes>
-    </div>
+    <Router>
+      <AuthProvider>
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/dash" element={<DashboardPage />} />
+          <Route path="/auth/callback" element={<AuthCallback />} />
+        </Routes>
+      </AuthProvider>
+    </Router>
   );
-};
+}
 
 export default App;
