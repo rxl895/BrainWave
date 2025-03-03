@@ -77,21 +77,11 @@ const HomePage = () => {
           <p className="mb-8 text-lg text-purple-100">
             Join thousands of students already using BrainWave to achieve their academic goals
           </p>
-          <LoginButton />
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="bg-gray-50 py-8">
-        <div className="container mx-auto px-6 text-center text-gray-600">
-          <p>© 2025 BrainWave. All rights reserved.</p>
-          <div className="mt-4 space-x-4">
-            <a href="#" className="hover:text-purple-600">Terms</a>
-            <a href="#" className="hover:text-purple-600">Privacy</a>
-            <a href="#" className="hover:text-purple-600">Contact</a>
+          <div className="flex justify-center">
+            <LoginButton />
           </div>
         </div>
-      </footer>
+      </section>
     </div>
   );
 };

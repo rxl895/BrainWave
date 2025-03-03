@@ -2,32 +2,12 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <link rel="icon" type="image/svg+xml" href="/logo.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Vite + React</title>
-    <link rel="stylesheet" href="style.css">
+    <title>BrainWave</title>
   </head>
   <body>
-    <header id="static-header" class="fade-in">
-      <button id="theme-toggle">🌙</button>  <!-- Dark Mode Toggle Button -->
-    </header>
-
-    <div class="container slide-in"> <!-- Causing the misaligned elements below (outside react) -->
-      <div id="root"></div>
-      <button class="fade-in">Get Started</button>
-    </div>
-    <footer class="fade-in">© 2025 BrainWave</footer>
+    <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
-    <script>
-      const toggleButton = document.getElementById("theme-toggle");
-      toggleButton.addEventListener("click", () => {
-        document.body.classList.toggle("dark-mode");
-        if (document.body.classList.contains("dark-mode")) {
-          toggleButton.textContent = "☀️"; // Light mode icon
-        } else {
-          toggleButton.textContent = "🌙"; // Dark mode icon
-        }
-      });
-    </script>
   </body>
 </html>
