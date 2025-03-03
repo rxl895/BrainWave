@@ -1,13 +1,24 @@
-import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { Settings } from 'lucide-react';
+import { Settings, LogOut } from 'lucide-react';
 
 export const Sidebar = () => {
   const location = useLocation();
-  const { user } = useAuth();
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
+  const [showSettings, setShowSettings] = useState(false);
 
   const isActive = (path) => location.pathname === path;
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate('/');
+    } catch (error) {
+      console.error('Error logging out:', error);
+    }
+  };
 
   return (
     <div className="h-screen w-64 bg-[#F7EFE5] flex flex-col">
@@ -49,7 +60,7 @@ export const Sidebar = () => {
       </nav>
 
       {/* User Profile */}
-      <div className="p-4 bg-gray-200 mt-auto">
+      <div className="p-4 bg-gray-200 mt-auto relative">
         <div className="flex items-center justify-between">
           <div className="flex items-center">
             <div className="w-10 h-10 bg-purple-200 rounded-full flex items-center justify-center">
@@ -59,10 +70,26 @@ export const Sidebar = () => {
               {user?.user_metadata?.full_name || 'Username'}
             </span>
           </div>
-          <button className="text-gray-600 hover:text-gray-900">
+          <button 
+            className="text-gray-600 hover:text-gray-900"
+            onClick={() => setShowSettings(!showSettings)}
+          >
             <Settings size={20} />
           </button>
         </div>
+
+        {/* Settings Dropdown */}
+        {showSettings && (
+          <div className="absolute bottom-full left-0 w-full p-2 bg-white rounded-t-lg shadow-lg border border-gray-200">
+            <button
+              onClick={handleLogout}
+              className="w-full flex items-center px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg"
+            >
+              <LogOut size={18} className="mr-2" />
+              Sign Out
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
