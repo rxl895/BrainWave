@@ -125,7 +125,7 @@ export const authService = {
   async updateProfile(profile: Partial<{
     full_name: string;
     avatar_url: string;
-  }>): Promise<{ error: AuthError | null }> {
+  }>): Promise<{ error: AuthError | PostgrestError | null }> {
     const { error } = await supabase.auth.updateUser({
       data: profile,
     });
