@@ -62,7 +62,7 @@ const CalendarPage = () => {
   };
 
   return (
-    <div className="flex min-h-screen bg-[#FDF6E3]">
+    <div className="flex min-h-screen bg-white">
       <Sidebar />
       
       <main className="flex-1 p-8">
