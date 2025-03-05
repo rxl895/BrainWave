@@ -13,6 +13,13 @@ export const AuthCallback = () => {
         navigate('/', { replace: true });
       }
     });
+
+    // Check if we have a pending calendar event
+    const pendingEvent = localStorage.getItem('pendingCalendarEvent');
+    if (pendingEvent) {
+      localStorage.removeItem('pendingCalendarEvent');
+      navigate('/calendar'); // Redirect back to calendar page
+    }
   }, [navigate]);
 
   return null;
