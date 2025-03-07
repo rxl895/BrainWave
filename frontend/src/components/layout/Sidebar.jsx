@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { Settings, LogOut } from 'lucide-react';
+import logo from '../../assets/logo.png';
 
 export const Sidebar = () => {
   const location = useLocation();
@@ -25,7 +26,7 @@ export const Sidebar = () => {
       {/* Logo */}
       <div className="p-4">
         <Link to="/dash">
-          <img src="/Users/andrewxue/Documents/BrainWaveAI/frontend/logo.png" alt="BrainWave" className="w-16 h-16" />
+          <img src={logo} alt="BrainWave" className="w-16 h-16" />
         </Link>
       </div>
 
