@@ -71,6 +71,10 @@ const DashboardPage = () => {
     }
   };
 
+  const handleDeleteGroup = (groupId) => {
+    setGroups(groups.filter(group => group.id !== groupId));
+  };
+
   return (
     <div className="flex min-h-screen bg-gray-50">
       <Sidebar />
@@ -115,7 +119,11 @@ const DashboardPage = () => {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {groups.map((group) => (
-                <StudyGroupCard key={group.id} group={group} />
+                <StudyGroupCard 
+                  key={group.id} 
+                  group={group} 
+                  onDelete={handleDeleteGroup}
+                />
               ))}
             </div>
           )}
