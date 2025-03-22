@@ -42,7 +42,8 @@ const DashboardPage = () => {
   const handleCreateGroup = async (e) => {
     e.preventDefault();
     try {
-      const { data, error } = await supabase
+      // First, create the study group
+      const { data: groupData, error: groupError } = await supabase
         .from('study_groups')
         .insert([
           {
@@ -53,9 +54,22 @@ const DashboardPage = () => {
         .select()
         .single();
 
-      if (error) throw error;
+      if (groupError) throw groupError;
 
-      setGroups([...groups, data]);
+      // Then, add the creator as an admin member
+      const { error: memberError } = await supabase
+        .from('study_group_members')
+        .insert([
+          {
+            study_group_id: groupData.id,
+            user_id: user.id,
+            role: 'admin'
+          }
+        ]);
+
+      if (memberError) throw memberError;
+
+      setGroups([...groups, groupData]);
       setShowCreateForm(false);
       setNewGroup({
         name: '',
