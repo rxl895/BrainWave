@@ -2,8 +2,14 @@
 CREATE OR REPLACE FUNCTION public.handle_new_study_group()
 RETURNS TRIGGER AS $$
 BEGIN
-  INSERT INTO public.study_group_members (study_group_id, user_id, role)
-  VALUES (NEW.id, NEW.owner_id, 'admin');
+  -- Check if the user is already a member before inserting
+  IF NOT EXISTS (
+    SELECT 1 FROM public.study_group_members 
+    WHERE study_group_id = NEW.id AND user_id = NEW.owner_id
+  ) THEN
+    INSERT INTO public.study_group_members (study_group_id, user_id, role)
+    VALUES (NEW.id, NEW.owner_id, 'admin');
+  END IF;
   
   RETURN NEW;
 END;
