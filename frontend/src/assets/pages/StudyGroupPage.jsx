@@ -31,33 +31,74 @@ const StudyGroupPage = () => {
         if (groupError) throw groupError;
         setGroup(groupData);
 
-        // Fetch group members
+        // Fetch group members without trying to join profiles
         const { data: membersData, error: membersError } = await supabase
           .from('study_group_members')
-          .select('*, profiles:user_id(*), role')
+          .select('*')
           .eq('study_group_id', id);
 
         if (membersError) throw membersError;
         
-        const membersList = membersData.map(member => ({ 
-          ...member.profiles, 
-          role: member.role 
-        }));
-        
-        setUsers(membersList);
-        
         // Check if current user is a member
-        setIsUserMember(membersList.some(member => member.id === user.id));
+        setIsUserMember(membersData.some(member => member.user_id === user.id));
+        
+        // Now fetch profiles separately for the members
+        if (membersData.length > 0) {
+          const userIds = membersData.map(member => member.user_id);
+          
+          const { data: profilesData, error: profilesError } = await supabase
+            .from('users')
+            .select('*')
+            .in('id', userIds);
+            
+          if (profilesError) throw profilesError;
+          
+          // Combine the members and profiles data
+          const membersWithProfiles = membersData.map(member => {
+            const profile = profilesData.find(p => p.id === member.user_id) || {};
+            return {
+              ...profile,
+              role: member.role
+            };
+          });
+          
+          setUsers(membersWithProfiles);
+        } else {
+          setUsers([]);
+        }
 
-        // Fetch messages
+        // Fetch messages (also update this to avoid using join)
         const { data: messagesData, error: messagesError } = await supabase
           .from('messages')
-          .select('*, profiles:sender_id(name, avatar_url)')
+          .select('*')
           .eq('group_id', id)
           .order('created_at', { ascending: true });
 
         if (messagesError) throw messagesError;
-        setMessages(messagesData);
+        
+        // If we have messages, fetch the sender profiles
+        if (messagesData.length > 0) {
+          const senderIds = [...new Set(messagesData.map(msg => msg.sender_id))];
+          
+          const { data: senderProfiles, error: senderError } = await supabase
+            .from('users')
+            .select('id, full_name as name, avatar_url')
+            .in('id', senderIds);
+            
+          if (!senderError) {
+            // Combine messages with sender profile data
+            const messagesWithProfiles = messagesData.map(message => ({
+              ...message,
+              profiles: senderProfiles.find(p => p.id === message.sender_id) || null
+            }));
+            
+            setMessages(messagesWithProfiles);
+          } else {
+            setMessages(messagesData);
+          }
+        } else {
+          setMessages([]);
+        }
       } catch (error) {
         console.error('Error fetching group details:', error);
       } finally {
@@ -119,6 +160,52 @@ const StudyGroupPage = () => {
     
     setJoinLoading(true);
     try {
+      // First check if the user is already a member
+      const { data: existingMember, error: checkError } = await supabase
+        .from('study_group_members')
+        .select('*')
+        .eq('study_group_id', id)
+        .eq('user_id', user.id)
+        .maybeSingle();
+      
+      if (checkError) throw checkError;
+      
+      // If already a member, just update the UI state
+      if (existingMember) {
+        setIsUserMember(true);
+        
+        // Refresh member data using the separate query approach
+        const { data: refreshedMembers, error: refreshError } = await supabase
+          .from('study_group_members')
+          .select('*')
+          .eq('study_group_id', id);
+          
+        if (!refreshError && refreshedMembers) {
+          // Fetch profiles for members
+          const userIds = refreshedMembers.map(member => member.user_id);
+          
+          const { data: profilesData } = await supabase
+            .from('users')
+            .select('*')
+            .in('id', userIds);
+            
+          if (profilesData) {
+            const membersWithProfiles = refreshedMembers.map(member => {
+              const profile = profilesData.find(p => p.id === member.user_id) || {};
+              return {
+                ...profile,
+                role: member.role
+              };
+            });
+            
+            setUsers(membersWithProfiles);
+          }
+        }
+        
+        return;
+      }
+      
+      // If not a member, add them as a member
       const { error } = await supabase
         .from('study_group_members')
         .insert({
@@ -129,14 +216,18 @@ const StudyGroupPage = () => {
         
       if (error) throw error;
       
-      // Update the users list
-      const { data: userData } = await supabase
-        .from('profiles')
+      // Fetch the user's profile data
+      const { data: userProfile } = await supabase
+        .from('users')
         .select('*')
         .eq('id', user.id)
         .single();
-        
-      setUsers([...users, { ...userData, role: 'member' }]);
+      
+      if (userProfile) {
+        // Add the user to the UI with their profile data
+        setUsers(prevUsers => [...prevUsers, { ...userProfile, role: 'member' }]);
+      }
+      
       setIsUserMember(true);
     } catch (error) {
       console.error('Error joining group:', error);
@@ -204,14 +295,14 @@ const StudyGroupPage = () => {
               <li key={user.id} className="flex items-center gap-2">
                 <div className="relative">
                   <img 
-                    src={user.avatar_url || `https://ui-avatars.com/api/?name=${user.name}&background=random`} 
-                    alt={user.name}
+                    src={user.avatar_url || `https://ui-avatars.com/api/?name=${user.full_name || 'User'}&background=random`} 
+                    alt={user.full_name || 'User'}
                     className="w-8 h-8 rounded-full"
                   />
                   <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-gray-800 rounded-full"></span>
                 </div>
                 <span className="text-sm">
-                  {user.name}
+                  {user.full_name || user.name || 'User'}
                   {user.id === group.owner_id && (
                     <span className="ml-2 text-xs bg-yellow-400 text-gray-800 px-1.5 rounded">owner</span>
                   )}
@@ -293,13 +384,13 @@ const StudyGroupPage = () => {
             messages.map((message) => (
               <div key={message.id} className="flex items-start gap-3">
                 <img 
-                  src={message.profiles?.avatar_url || `https://ui-avatars.com/api/?name=${message.profiles?.name || 'User'}&background=random`} 
-                  alt={message.profiles?.name || 'User'}
+                  src={message.profiles?.avatar_url || `https://ui-avatars.com/api/?name=${message.profiles?.name || message.profiles?.full_name || 'User'}&background=random`} 
+                  alt={message.profiles?.name || message.profiles?.full_name || 'User'}
                   className="w-10 h-10 rounded-full"
                 />
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="font-medium text-gray-900">{message.profiles?.name || 'User'}</span>
+                    <span className="font-medium text-gray-900">{message.profiles?.name || message.profiles?.full_name || 'User'}</span>
                     <span className="text-xs text-gray-500">
                       {new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </span>
