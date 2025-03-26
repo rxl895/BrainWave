@@ -42,7 +42,7 @@ const DashboardPage = () => {
   const handleCreateGroup = async (e) => {
     e.preventDefault();
     try {
-      // First, create the study group
+      // Create the study group
       const { data: groupData, error: groupError } = await supabase
         .from('study_groups')
         .insert([
@@ -56,18 +56,7 @@ const DashboardPage = () => {
 
       if (groupError) throw groupError;
 
-      // Then, add the creator as an admin member
-      const { error: memberError } = await supabase
-        .from('study_group_members')
-        .insert([
-          {
-            study_group_id: groupData.id,
-            user_id: user.id,
-            role: 'admin'
-          }
-        ]);
-
-      if (memberError) throw memberError;
+      // The server-side trigger will automatically add the owner as admin
 
       setGroups([...groups, groupData]);
       setShowCreateForm(false);
