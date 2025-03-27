@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
-import { Users, MessageSquare, Video, Phone, Menu, X, UserPlus } from 'lucide-react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { Users, MessageSquare, Video, Phone, Menu, X, UserPlus, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { CallModal } from '../../components/calls/CallModal';
 
 const StudyGroupPage = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [group, setGroup] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -19,6 +20,11 @@ const StudyGroupPage = () => {
   const [isUserMember, setIsUserMember] = useState(false);
   const [joinLoading, setJoinLoading] = useState(false);
   const messagesEndRef = React.useRef(null);
+
+  // Function to navigate back to dashboard
+  const handleBack = () => {
+    navigate('/dash');
+  };
 
   // Function to scroll to bottom of messages
   const scrollToBottom = () => {
@@ -265,14 +271,14 @@ const StudyGroupPage = () => {
       {/* Sidebar: Members list */}
       <div className={`${showSidebar ? 'translate-x-0' : '-translate-x-full'} 
                       lg:translate-x-0 transition-transform duration-300 ease-in-out
-                      w-64 bg-gray-800 text-white p-4 flex flex-col fixed lg:relative h-full z-10`}>
+                      w-64 bg-[#F7EFE5] text-white p-4 flex flex-col fixed lg:relative h-full z-10`}>
         <div className="mb-6">
-          <h2 className="text-xl font-bold">{group.name}</h2>
-          <p className="text-sm text-gray-400">{group.subject}</p>
+          <h2 className="text-xl font-bold text-black">{group.name}</h2>
+          <p className="text-sm text-purple-600">{group.subject}</p>
         </div>
 
         <div className="flex-1 overflow-y-auto">
-          <h3 className="flex items-center gap-2 text-sm font-medium text-gray-400 mb-2">
+          <h3 className="flex items-center gap-2 text-sm font-medium text-black mb-2">
             <Users size={16} />
             MEMBERS ({users.length}/{group.max_participants})
           </h3>
@@ -281,14 +287,14 @@ const StudyGroupPage = () => {
               <li key={user.id} className="flex items-center gap-2">
                 <div className="relative">
                   <img 
-                    src={user.avatar_url || `https://ui-avatars.com/api/?name=${user.full_name || 'User'}&background=random`} 
-                    alt={user.full_name || 'User'}
+                    src={user.avatar_url || `https://ui-avatars.com/api/?name=${user.full_name || user.id.substring(0, 5)}&background=random`} 
+                    alt={user.full_name || user.id.substring(0, 5)}
                     className="w-8 h-8 rounded-full"
                   />
                   <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-gray-800 rounded-full"></span>
                 </div>
-                <span className="text-sm">
-                  {user.full_name || user.name || 'User'}
+                <span className="text-sm text-black">
+                  {user.full_name || (user.id === user?.id ? 'You' : `User ${user.id.substring(0, 5)}`)}
                   {user.id === group.owner_id && (
                     <span className="ml-2 text-xs bg-yellow-400 text-gray-800 px-1.5 rounded">owner</span>
                   )}
@@ -352,7 +358,16 @@ const StudyGroupPage = () => {
         <div className="bg-white border-b px-6 py-3 flex items-center justify-between">
           <div className="flex items-center">
             <MessageSquare className="w-5 h-5 text-purple-600 mr-2" />
-            <h2 className="font-semibold text-gray-800"># general</h2>
+            <h2 className="font-semibold text-gray-800">Study Group Chatroom</h2>
+          </div>
+          <div className="flex items-center">
+            <button
+              onClick={handleBack}
+              className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+            >
+              <ArrowLeft size={16} />
+              <span>Back to Dashboard</span>
+            </button>
           </div>
         </div>
 
@@ -370,14 +385,14 @@ const StudyGroupPage = () => {
             messages.map((message) => (
               <div key={message.id} className="flex items-start gap-3">
                 <img 
-                  src={`https://ui-avatars.com/api/?name=${message.sender_id === user.id ? 'You' : 'User'}&background=random`} 
-                  alt={message.sender_id === user.id ? 'You' : 'User'}
+                  src={`https://ui-avatars.com/api/?name=${message.sender_id === user.id ? 'You' : message.sender_id.substring(0, 5)}&background=random`} 
+                  alt={message.sender_id === user.id ? 'You' : `User ${message.sender_id.substring(0, 5)}`}
                   className="w-10 h-10 rounded-full"
                 />
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="font-medium text-gray-900">
-                      {message.sender_id === user.id ? 'You' : 'User'}
+                    <span className="font-medium text-black">
+                      {message.sender_id === user.id ? 'You' : `User ${message.sender_id.substring(0, 5)}`}
                     </span>
                     <span className="text-xs text-gray-500">
                       {new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
