@@ -18,6 +18,17 @@ const StudyGroupPage = () => {
   const [callType, setCallType] = useState(null);
   const [isUserMember, setIsUserMember] = useState(false);
   const [joinLoading, setJoinLoading] = useState(false);
+  const messagesEndRef = React.useRef(null);
+
+  // Function to scroll to bottom of messages
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  // Scroll to bottom whenever messages change
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
 
   useEffect(() => {
     const fetchGroupDetails = async () => {
@@ -78,7 +89,13 @@ const StudyGroupPage = () => {
     const messagesSubscription = supabase
       .channel(`messages:group_id=eq.${id}`)
       .on('INSERT', payload => {
-        setMessages(prev => [...prev, payload.new]);
+        // Add sender information to the new message
+        const newMessage = {
+          ...payload.new,
+          // We'll identify if the message is from the current user or not
+          sender_id: payload.new.sender_id
+        };
+        setMessages(prev => [...prev, newMessage]);
       })
       .subscribe();
 
@@ -100,6 +117,19 @@ const StudyGroupPage = () => {
     e.preventDefault();
     if (!newMessage.trim()) return;
 
+    // Create the message object
+    const newMessageObject = {
+      id: `temp-${Date.now()}`, // Temporary ID until we get the real one from the server
+      content: newMessage,
+      sender_id: user.id,
+      group_id: id,
+      created_at: new Date().toISOString()
+    };
+
+    // Optimistically add message to UI
+    setMessages(prev => [...prev, newMessageObject]);
+    setNewMessage(''); // Clear input immediately
+
     try {
       const { error } = await supabase
         .from('messages')
@@ -110,9 +140,11 @@ const StudyGroupPage = () => {
         });
 
       if (error) throw error;
-      setNewMessage('');
     } catch (error) {
       console.error('Error sending message:', error);
+      // On error, we could remove the optimistic message or show an error indicator
+      setMessages(prev => prev.filter(msg => msg.id !== newMessageObject.id));
+      alert('Failed to send message. Please try again.');
     }
   };
 
@@ -356,6 +388,7 @@ const StudyGroupPage = () => {
               </div>
             ))
           )}
+          <div ref={messagesEndRef} />
         </div>
 
         {/* Message input */}
