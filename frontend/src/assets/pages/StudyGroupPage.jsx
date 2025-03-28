@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Users, MessageSquare, Video, Phone, Menu, X, UserPlus, ArrowLeft } from 'lucide-react';
+import { Users, MessageSquare, Video, Phone, Menu, X, UserPlus, ArrowLeft, Trash2 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { CallModal } from '../../components/calls/CallModal';
@@ -20,6 +20,7 @@ const StudyGroupPage = () => {
   const [isUserMember, setIsUserMember] = useState(false);
   const [joinLoading, setJoinLoading] = useState(false);
   const messagesEndRef = React.useRef(null);
+  const [deletingMessage, setDeletingMessage] = useState(null);
 
   // Function to navigate back to dashboard
   const handleBack = () => {
@@ -229,6 +230,34 @@ const StudyGroupPage = () => {
     }
   };
 
+  // Function to handle message deletion
+  const handleDeleteMessage = async (messageId) => {
+    if (deletingMessage) return; // Prevent multiple deletion requests
+    
+    // Ask for confirmation before deleting
+    if (!window.confirm('Are you sure you want to delete this message?')) {
+      return;
+    }
+    
+    setDeletingMessage(messageId);
+    try {
+      const { error } = await supabase
+        .from('messages')
+        .delete()
+        .eq('id', messageId);
+
+      if (error) throw error;
+      
+      // Remove message from the UI
+      setMessages(prev => prev.filter(msg => msg.id !== messageId));
+    } catch (error) {
+      console.error('Error deleting message:', error);
+      alert('Failed to delete message. Please try again.');
+    } finally {
+      setDeletingMessage(null);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-screen">
@@ -355,15 +384,15 @@ const StudyGroupPage = () => {
       {/* Main content: Chat */}
       <div className="flex-1 flex flex-col lg:ml-0 ml-0">
         {/* Chat header */}
-        <div className="bg-white border-b px-6 py-3 flex items-center justify-between">
+        <div className="bg-white border-b px-4 py-2 flex items-center justify-between shadow-sm">
           <div className="flex items-center">
             <MessageSquare className="w-5 h-5 text-purple-600 mr-2" />
-            <h2 className="font-semibold text-gray-800">Study Group Chatroom</h2>
+            <h2 className="font-bold text-black text-lg"># {group.name}</h2>
           </div>
           <div className="flex items-center">
             <button
               onClick={handleBack}
-              className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+              className="flex items-center gap-2 px-3 py-1.5 bg-purple-600 text-white text-sm rounded hover:bg-purple-700 transition-colors"
             >
               <ArrowLeft size={16} />
               <span>Back to Dashboard</span>
@@ -372,7 +401,7 @@ const StudyGroupPage = () => {
         </div>
 
         {/* Messages area */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-white">
+        <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-white">
           {!isUserMember ? (
             <div className="text-center text-gray-500 my-8">
               <p>Join the group to see messages and participate in discussions.</p>
@@ -383,22 +412,40 @@ const StudyGroupPage = () => {
             </div>
           ) : (
             messages.map((message) => (
-              <div key={message.id} className="flex items-start gap-3">
+              <div key={message.id} className="flex items-start gap-3 group hover:bg-gray-50 px-2 py-1 rounded">
                 <img 
                   src={`https://ui-avatars.com/api/?name=${message.sender_id === user.id ? 'You' : message.sender_id.substring(0, 5)}&background=random`} 
                   alt={message.sender_id === user.id ? 'You' : `User ${message.sender_id.substring(0, 5)}`}
-                  className="w-10 h-10 rounded-full"
+                  className="w-10 h-10 rounded-full mt-1 flex-shrink-0"
                 />
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium text-black">
-                      {message.sender_id === user.id ? 'You' : `User ${message.sender_id.substring(0, 5)}`}
-                    </span>
-                    <span className="text-xs text-gray-500">
-                      {new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </span>
+                <div className="flex-1 min-w-0 flex flex-col">
+                  <div className="flex items-start gap-2 justify-between w-full">
+                    <div className="flex flex-wrap items-baseline gap-2">
+                      <span className="font-bold text-black">
+                        {message.sender_id === user.id ? 'You' : `User ${message.sender_id.substring(0, 5)}`}
+                      </span>
+                      <span className="text-xs text-gray-500 flex-shrink-0">
+                        {new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </div>
+                    {message.sender_id === user.id && (
+                      <button 
+                        onClick={() => handleDeleteMessage(message.id)}
+                        disabled={deletingMessage === message.id}
+                        className={`opacity-0 group-hover:opacity-100 transition-opacity p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded flex-shrink-0 ${deletingMessage === message.id ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        title="Delete message"
+                      >
+                        {deletingMessage === message.id ? (
+                          <span className="inline-block w-4 h-4 border-2 border-t-transparent border-red-500 rounded-full animate-spin"></span>
+                        ) : (
+                          <Trash2 size={16} />
+                        )}
+                      </button>
+                    )}
                   </div>
-                  <p className="text-gray-800">{message.content}</p>
+                  <div className="w-full text-left">
+                    <p className="text-gray-800 break-words">{message.content}</p>
+                  </div>
                 </div>
               </div>
             ))
@@ -407,7 +454,7 @@ const StudyGroupPage = () => {
         </div>
 
         {/* Message input */}
-        <div className="p-4 bg-white border-t">
+        <div className="px-4 py-3 bg-white border-t">
           {isUserMember ? (
             <form onSubmit={handleSendMessage} className="flex gap-2">
               <input
@@ -415,11 +462,12 @@ const StudyGroupPage = () => {
                 value={newMessage}
                 onChange={(e) => setNewMessage(e.target.value)}
                 placeholder="Type a message..."
-                className="flex-1 px-4 py-2 bg-gray-100 rounded-full focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="flex-1 px-4 py-2 bg-gray-100 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-purple-500"
+                autoComplete="off"
               />
               <button 
                 type="submit"
-                className="px-4 py-2 bg-purple-600 text-white rounded-full hover:bg-purple-700 transition-colors"
+                className="px-4 py-2 bg-purple-600 text-white rounded font-medium hover:bg-purple-700 transition-colors"
               >
                 Send
               </button>
