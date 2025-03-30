@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Users, MessageSquare, Video, Phone, Menu, X, UserPlus, ArrowLeft, Trash2 } from 'lucide-react';
+import { Users, MessageSquare, Video, Phone, Menu, X, UserPlus, ArrowLeft, Trash2, Search, XCircle } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { CallModal } from '../../components/calls/CallModal';
@@ -21,10 +21,84 @@ const StudyGroupPage = () => {
   const [joinLoading, setJoinLoading] = useState(false);
   const messagesEndRef = React.useRef(null);
   const [deletingMessage, setDeletingMessage] = useState(null);
+  
+  // Search functionality
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchResults, setSearchResults] = useState([]);
+  const [currentResultIndex, setCurrentResultIndex] = useState(0);
 
   // Function to navigate back to dashboard
   const handleBack = () => {
     navigate('/dash');
+  };
+
+  // Function to toggle search bar
+  const toggleSearch = () => {
+    setIsSearching(!isSearching);
+    if (isSearching) {
+      // Clear search when closing
+      setSearchQuery('');
+      setSearchResults([]);
+      setCurrentResultIndex(0);
+    }
+  };
+
+  // Handle escape key to exit search mode
+  useEffect(() => {
+    const handleEscKey = (event) => {
+      if (event.key === 'Escape' && isSearching) {
+        toggleSearch();
+      }
+    };
+    
+    window.addEventListener('keydown', handleEscKey);
+    return () => window.removeEventListener('keydown', handleEscKey);
+  }, [isSearching]);
+
+  // Function to search messages
+  const handleSearch = (e) => {
+    e.preventDefault();
+    if (!searchQuery.trim()) return;
+    
+    const query = searchQuery.toLowerCase();
+    const results = messages.filter(message => 
+      message.content.toLowerCase().includes(query)
+    );
+    
+    setSearchResults(results);
+    setCurrentResultIndex(0);
+    
+    // Scroll to first result if exists
+    if (results.length > 0) {
+      const element = document.getElementById(`message-${results[0].id}`);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        element.classList.add('bg-yellow-100');
+        setTimeout(() => element.classList.remove('bg-yellow-100'), 1500);
+      }
+    }
+  };
+
+  // Navigate through search results
+  const navigateResults = (direction) => {
+    if (searchResults.length === 0) return;
+    
+    let newIndex;
+    if (direction === 'next') {
+      newIndex = (currentResultIndex + 1) % searchResults.length;
+    } else {
+      newIndex = (currentResultIndex - 1 + searchResults.length) % searchResults.length;
+    }
+    
+    setCurrentResultIndex(newIndex);
+    
+    const element = document.getElementById(`message-${searchResults[newIndex].id}`);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      element.classList.add('bg-yellow-100');
+      setTimeout(() => element.classList.remove('bg-yellow-100'), 1500);
+    }
   };
 
   // Function to scroll to bottom of messages
@@ -389,7 +463,66 @@ const StudyGroupPage = () => {
             <MessageSquare className="w-5 h-5 text-purple-600 mr-2" />
             <h2 className="font-bold text-black text-lg"># {group.name}</h2>
           </div>
-          <div className="flex items-center">
+          <div className="flex items-center gap-3">
+            {isSearching ? (
+              <form onSubmit={handleSearch} className="flex items-center">
+                <div className="relative w-64">
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search in conversation..."
+                    className="w-full py-1 pl-8 pr-8 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-purple-500"
+                    autoFocus
+                  />
+                  <Search className="absolute left-2 top-1.5 w-4 h-4 text-gray-400" />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchQuery('')}
+                      className="absolute right-2 top-1.5 text-gray-400 hover:text-gray-600"
+                    >
+                      <XCircle className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+                <button
+                  type="submit"
+                  className="ml-2 px-2 py-1 bg-purple-600 text-white text-xs rounded hover:bg-purple-700"
+                >
+                  Search
+                </button>
+                {searchResults.length > 0 && (
+                  <div className="flex items-center ml-2">
+                    <button
+                      type="button"
+                      onClick={() => navigateResults('prev')}
+                      className="px-1 py-1 text-gray-600 hover:bg-gray-100 rounded-l border border-gray-300"
+                    >
+                      &uarr;
+                    </button>
+                    <div className="px-2 text-xs border-t border-b border-gray-300">
+                      {currentResultIndex + 1}/{searchResults.length}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => navigateResults('next')}
+                      className="px-1 py-1 text-gray-600 hover:bg-gray-100 rounded-r border border-gray-300"
+                    >
+                      &darr;
+                    </button>
+                  </div>
+                )}
+              </form>
+            ) : (
+              <button
+                onClick={toggleSearch}
+                className="p-1.5 text-gray-600 hover:bg-gray-100 rounded-full"
+                title="Search messages"
+              >
+                <Search className="w-5 h-5" />
+              </button>
+            )}
             <button
               onClick={handleBack}
               className="flex items-center gap-2 px-3 py-1.5 bg-purple-600 text-white text-sm rounded hover:bg-purple-700 transition-colors"
@@ -411,44 +544,70 @@ const StudyGroupPage = () => {
               <p>No messages yet. Start the conversation!</p>
             </div>
           ) : (
-            messages.map((message) => (
-              <div key={message.id} className="flex items-start gap-3 group hover:bg-gray-50 px-2 py-1 rounded">
-                <img 
-                  src={`https://ui-avatars.com/api/?name=${message.sender_id === user.id ? 'You' : message.sender_id.substring(0, 5)}&background=random`} 
-                  alt={message.sender_id === user.id ? 'You' : `User ${message.sender_id.substring(0, 5)}`}
-                  className="w-10 h-10 rounded-full mt-1 flex-shrink-0"
-                />
-                <div className="flex-1 min-w-0 flex flex-col">
-                  <div className="flex items-start gap-2 justify-between w-full">
-                    <div className="flex flex-wrap items-baseline gap-2">
-                      <span className="font-bold text-black">
-                        {message.sender_id === user.id ? 'You' : `User ${message.sender_id.substring(0, 5)}`}
-                      </span>
-                      <span className="text-xs text-gray-500 flex-shrink-0">
-                        {new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </span>
+            messages.map((message) => {
+              // Check if this message is a search result
+              const isSearchResult = searchResults.includes(message);
+              const isCurrentResult = isSearchResult && searchResults[currentResultIndex]?.id === message.id;
+              
+              // Function to highlight search term in message content
+              const highlightSearchMatch = (text, searchTerm) => {
+                if (!searchTerm || !isSearchResult) return text;
+                
+                const regex = new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+                const parts = text.split(regex);
+                
+                return parts.map((part, i) => 
+                  regex.test(part) ? <mark key={i} className="bg-yellow-200">{part}</mark> : part
+                );
+              };
+              
+              return (
+                <div 
+                  id={`message-${message.id}`}
+                  key={message.id} 
+                  className={`flex items-start gap-3 group px-2 py-1 rounded transition-colors ${
+                    isCurrentResult ? 'bg-yellow-50' : isSearchResult ? 'bg-gray-50' : 'hover:bg-gray-50'
+                  }`}
+                >
+                  <img 
+                    src={`https://ui-avatars.com/api/?name=${message.sender_id === user.id ? 'You' : message.sender_id.substring(0, 5)}&background=random`} 
+                    alt={message.sender_id === user.id ? 'You' : `User ${message.sender_id.substring(0, 5)}`}
+                    className="w-10 h-10 rounded-full mt-1 flex-shrink-0"
+                  />
+                  <div className="flex-1 min-w-0 flex flex-col">
+                    <div className="flex items-start gap-2 justify-between w-full">
+                      <div className="flex flex-wrap items-baseline gap-2">
+                        <span className="font-bold text-black">
+                          {message.sender_id === user.id ? 'You' : `User ${message.sender_id.substring(0, 5)}`}
+                        </span>
+                        <span className="text-xs text-gray-500 flex-shrink-0">
+                          {new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
+                      {message.sender_id === user.id && (
+                        <button 
+                          onClick={() => handleDeleteMessage(message.id)}
+                          disabled={deletingMessage === message.id}
+                          className={`opacity-0 group-hover:opacity-100 transition-opacity p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded flex-shrink-0 ${deletingMessage === message.id ? 'opacity-50 cursor-not-allowed' : ''}`}
+                          title="Delete message"
+                        >
+                          {deletingMessage === message.id ? (
+                            <span className="inline-block w-4 h-4 border-2 border-t-transparent border-red-500 rounded-full animate-spin"></span>
+                          ) : (
+                            <Trash2 size={16} />
+                          )}
+                        </button>
+                      )}
                     </div>
-                    {message.sender_id === user.id && (
-                      <button 
-                        onClick={() => handleDeleteMessage(message.id)}
-                        disabled={deletingMessage === message.id}
-                        className={`opacity-0 group-hover:opacity-100 transition-opacity p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded flex-shrink-0 ${deletingMessage === message.id ? 'opacity-50 cursor-not-allowed' : ''}`}
-                        title="Delete message"
-                      >
-                        {deletingMessage === message.id ? (
-                          <span className="inline-block w-4 h-4 border-2 border-t-transparent border-red-500 rounded-full animate-spin"></span>
-                        ) : (
-                          <Trash2 size={16} />
-                        )}
-                      </button>
-                    )}
-                  </div>
-                  <div className="w-full text-left">
-                    <p className="text-gray-800 break-words">{message.content}</p>
+                    <div className="w-full text-left">
+                      <p className="text-gray-800 break-words">
+                        {highlightSearchMatch(message.content, searchQuery)}
+                      </p>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
           <div ref={messagesEndRef} />
         </div>
