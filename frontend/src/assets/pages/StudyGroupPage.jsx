@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Users, MessageSquare, Video, Phone, Menu, X, UserPlus, ArrowLeft, Trash2, Search, XCircle } from 'lucide-react';
+import { Users, MessageSquare, Video, Phone, Menu, X, UserPlus, ArrowLeft, Trash2, Search, XCircle, PaperclipIcon, File, Download, Maximize2, Eye } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { CallModal } from '../../components/calls/CallModal';
@@ -21,6 +21,13 @@ const StudyGroupPage = () => {
   const [joinLoading, setJoinLoading] = useState(false);
   const messagesEndRef = React.useRef(null);
   const [deletingMessage, setDeletingMessage] = useState(null);
+  
+  // File sharing functionality
+  const [files, setFiles] = useState([]);
+  const [uploadingFile, setUploadingFile] = useState(false);
+  const [showFilesPanel, setShowFilesPanel] = useState(false);
+  const [filePreview, setFilePreview] = useState(null);
+  const fileInputRef = React.useRef(null);
   
   // Search functionality
   const [searchQuery, setSearchQuery] = useState('');
@@ -157,6 +164,9 @@ const StudyGroupPage = () => {
         
         // Use simple message data without trying to join with user profiles
         setMessages(messagesData);
+        
+        // Fetch files for this group
+        await fetchGroupFiles();
       } catch (error) {
         console.error('Error fetching group details:', error);
       } finally {
@@ -193,6 +203,120 @@ const StudyGroupPage = () => {
       supabase.removeChannel(presenceSubscription);
     };
   }, [id]);
+
+  // Function to fetch files for the group
+  const fetchGroupFiles = async () => {
+    try {
+      const { data, error } = await supabase
+        .storage
+        .from('group-files')
+        .list(`${id}`);
+        
+      if (error) throw error;
+      
+      if (data) {
+        // Get file metadata for each file
+        const filesWithMetadata = await Promise.all(
+          data.map(async (file) => {
+            const { data: metadata } = await supabase
+              .from('group_files')
+              .select('*')
+              .eq('file_path', `${id}/${file.name}`)
+              .single();
+              
+            return {
+              ...file,
+              metadata: metadata || {},
+              url: supabase.storage.from('group-files').getPublicUrl(`${id}/${file.name}`).data.publicUrl
+            };
+          })
+        );
+        
+        setFiles(filesWithMetadata);
+      }
+    } catch (error) {
+      console.error('Error fetching files:', error);
+    }
+  };
+  
+  // Function to handle file upload
+  const handleFileUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    setUploadingFile(true);
+    try {
+      // Upload file to storage
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`;
+      const filePath = `${id}/${fileName}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('group-files')
+        .upload(filePath, file);
+        
+      if (uploadError) throw uploadError;
+      
+      // Store metadata in database
+      const { error: metadataError } = await supabase
+        .from('group_files')
+        .insert({
+          group_id: id,
+          uploader_id: user.id,
+          file_name: file.name,
+          file_path: filePath,
+          file_size: file.size,
+          file_type: file.type,
+          uploaded_at: new Date().toISOString()
+        });
+        
+      if (metadataError) throw metadataError;
+      
+      // Add file message to chat
+      await supabase
+        .from('messages')
+        .insert({
+          content: `Shared a file: ${file.name}`,
+          sender_id: user.id,
+          group_id: id,
+          is_file: true,
+          file_path: filePath
+        });
+      
+      // Refresh files
+      await fetchGroupFiles();
+      
+      // Clear file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = null;
+      }
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      alert('Error uploading file. Please try again.');
+    } finally {
+      setUploadingFile(false);
+    }
+  };
+  
+  // Function to toggle files panel
+  const toggleFilesPanel = () => {
+    setShowFilesPanel(!showFilesPanel);
+    
+    // If opening panel, refresh files list
+    if (!showFilesPanel) {
+      fetchGroupFiles();
+    }
+  };
+  
+  // Function to preview file
+  const handleFilePreview = (file) => {
+    setFilePreview(file);
+  };
+  
+  // Function to close file preview
+  const closeFilePreview = () => {
+    setFilePreview(null);
+  };
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
@@ -329,6 +453,77 @@ const StudyGroupPage = () => {
       alert('Failed to delete message. Please try again.');
     } finally {
       setDeletingMessage(null);
+    }
+  };
+
+  // Function to format file size
+  const formatFileSize = (bytes) => {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+  
+  // Function to get file preview content based on file type
+  const getFilePreviewContent = (file) => {
+    const fileType = file.metadata.file_type || '';
+    const fileUrl = file.url;
+    
+    if (fileType.startsWith('image/')) {
+      return (
+        <img 
+          src={fileUrl} 
+          alt={file.metadata.file_name || file.name}
+          className="max-w-full max-h-[70vh] object-contain"
+        />
+      );
+    } else if (fileType.startsWith('video/')) {
+      return (
+        <video 
+          src={fileUrl} 
+          controls 
+          className="max-w-full max-h-[70vh]"
+        >
+          Your browser does not support video playback.
+        </video>
+      );
+    } else if (fileType.startsWith('audio/')) {
+      return (
+        <audio 
+          src={fileUrl} 
+          controls 
+          className="w-full"
+        >
+          Your browser does not support audio playback.
+        </audio>
+      );
+    } else if (fileType === 'application/pdf') {
+      return (
+        <iframe 
+          src={fileUrl} 
+          title={file.metadata.file_name || file.name}
+          className="w-full h-[70vh]"
+        ></iframe>
+      );
+    } else {
+      return (
+        <div className="text-center p-10">
+          <div className="bg-gray-100 p-10 rounded-lg">
+            <File size={80} className="mx-auto mb-4 text-gray-600" />
+            <h4 className="font-medium text-gray-900 mb-2">{file.metadata.file_name || file.name}</h4>
+            <p className="text-gray-500 mb-4">This file cannot be previewed</p>
+            <a
+              href={fileUrl}
+              download={file.metadata.file_name || file.name}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700"
+            >
+              <Download size={18} />
+              Download
+            </a>
+          </div>
+        </div>
+      );
     }
   };
 
@@ -609,7 +804,37 @@ const StudyGroupPage = () => {
                     </div>
                     <div className="w-full text-left">
                       <p className="text-gray-800 break-words">
-                        {highlightSearchMatch(message.content, searchQuery)}
+                        {message.is_file ? (
+                          <div className="flex items-center gap-2 text-purple-600 hover:text-purple-800">
+                            <File size={16} />
+                            <span 
+                              className="underline cursor-pointer"
+                              onClick={() => {
+                                // Try to find the file in our files array
+                                const file = files.find(f => f.metadata.file_path === message.file_path);
+                                if (file) {
+                                  handleFilePreview(file);
+                                } else {
+                                  // If not found, generate a simple file object with the URL
+                                  const fileName = message.content.replace('Shared a file: ', '');
+                                  const fileUrl = supabase.storage.from('group-files').getPublicUrl(message.file_path).data.publicUrl;
+                                  handleFilePreview({
+                                    name: fileName,
+                                    metadata: {
+                                      file_name: fileName,
+                                      file_path: message.file_path
+                                    },
+                                    url: fileUrl
+                                  });
+                                }
+                              }}
+                            >
+                              {highlightSearchMatch(message.content, searchQuery)}
+                            </span>
+                          </div>
+                        ) : (
+                          highlightSearchMatch(message.content, searchQuery)
+                        )}
                       </p>
                     </div>
                   </div>
@@ -632,6 +857,22 @@ const StudyGroupPage = () => {
                 className="flex-1 px-4 py-2 bg-gray-100 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-purple-500"
                 autoComplete="off"
               />
+              <label className="relative flex items-center">
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileUpload}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  disabled={uploadingFile}
+                />
+                <div className={`py-2 px-3 rounded ${uploadingFile ? 'bg-gray-400' : 'bg-gray-200 hover:bg-gray-300'} text-gray-700 cursor-pointer`}>
+                  {uploadingFile ? (
+                    <span className="inline-block w-5 h-5 border-2 border-t-transparent border-gray-600 rounded-full animate-spin"></span>
+                  ) : (
+                    <PaperclipIcon size={20} />
+                  )}
+                </div>
+              </label>
               <button 
                 type="submit"
                 className="px-4 py-2 bg-purple-600 text-white rounded font-medium hover:bg-purple-700 transition-colors"
@@ -645,6 +886,123 @@ const StudyGroupPage = () => {
             </div>
           )}
         </div>
+        
+        {/* Files button (fixed) */}
+        {isUserMember && (
+          <button
+            onClick={toggleFilesPanel}
+            className="fixed right-4 bottom-20 z-10 p-3 bg-purple-600 text-white rounded-full shadow-lg hover:bg-purple-700 transition-colors"
+            title="View group files"
+          >
+            <File size={20} />
+          </button>
+        )}
+        
+        {/* Files panel */}
+        {showFilesPanel && (
+          <div className="fixed inset-0 z-30 bg-black bg-opacity-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[80vh] flex flex-col">
+              <div className="flex items-center justify-between px-6 py-4 border-b">
+                <h3 className="text-xl font-semibold">Group Files</h3>
+                <button 
+                  onClick={toggleFilesPanel} 
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+              
+              <div className="flex-1 overflow-y-auto p-6">
+                {files.length === 0 ? (
+                  <div className="text-center text-gray-500 py-8">
+                    <p>No files have been shared in this group yet.</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {files.map((file) => (
+                      <div key={file.id || file.name} className="border rounded-lg p-4 hover:bg-gray-50">
+                        <div className="flex justify-between items-start">
+                          <div className="flex items-center gap-3">
+                            <div className="bg-gray-200 p-2 rounded">
+                              <File size={24} className="text-gray-700" />
+                            </div>
+                            <div className="overflow-hidden">
+                              <p className="font-medium text-gray-900 truncate">{file.metadata.file_name || file.name}</p>
+                              <p className="text-sm text-gray-500">
+                                {(file.metadata.file_size || file.metadata.size) ? 
+                                  formatFileSize(file.metadata.file_size || file.size) : ''}
+                                {file.metadata.uploaded_at && 
+                                  ` · ${new Date(file.metadata.uploaded_at).toLocaleDateString()}`}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex gap-2">
+                            <button 
+                              onClick={() => handleFilePreview(file)}
+                              className="p-1 text-gray-500 hover:text-purple-600 hover:bg-purple-50 rounded"
+                              title="Preview file"
+                            >
+                              <Eye size={18} />
+                            </button>
+                            <a 
+                              href={file.url}
+                              download={file.metadata.file_name || file.name}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="p-1 text-gray-500 hover:text-purple-600 hover:bg-purple-50 rounded"
+                              title="Download file"
+                            >
+                              <Download size={18} />
+                            </a>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {/* File preview modal */}
+        {filePreview && (
+          <div className="fixed inset-0 z-40 bg-black bg-opacity-80 flex items-center justify-center p-4">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
+              <div className="flex items-center justify-between px-6 py-3 border-b">
+                <h3 className="font-medium truncate flex-1">{filePreview.metadata.file_name || filePreview.name}</h3>
+                <div className="flex items-center gap-2">
+                  <a
+                    href={filePreview.url}
+                    download={filePreview.metadata.file_name || filePreview.name}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-1.5 text-gray-500 hover:text-purple-600 hover:bg-purple-50 rounded"
+                    title="Download file"
+                  >
+                    <Download size={20} />
+                  </a>
+                  <button 
+                    onClick={() => window.open(filePreview.url, '_blank')}
+                    className="p-1.5 text-gray-500 hover:text-purple-600 hover:bg-purple-50 rounded"
+                    title="Open in new tab"
+                  >
+                    <Maximize2 size={20} />
+                  </button>
+                  <button 
+                    onClick={closeFilePreview} 
+                    className="p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded"
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
+              </div>
+              <div className="flex-1 overflow-auto p-4 flex items-center justify-center bg-gray-50">
+                {getFilePreviewContent(filePreview)}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
