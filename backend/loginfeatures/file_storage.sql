@@ -64,3 +64,72 @@ CREATE POLICY "Group members can upload files"
 -- Add timestamp field to messages table for files
 ALTER TABLE public.messages ADD COLUMN IF NOT EXISTS is_file boolean DEFAULT false;
 ALTER TABLE public.messages ADD COLUMN IF NOT EXISTS file_path text; 
+
+-- Storage RLS policies (to be run from Supabase dashboard or via SQL editor)
+-- These configure access control for the storage bucket itself
+
+-- First, ensure you've created the 'group-files' bucket in the Supabase dashboard
+
+-- Storage policy for downloading files
+BEGIN;
+-- Drop existing policy if it exists
+DROP POLICY IF EXISTS "Group members can download files" ON storage.objects;
+
+-- Create new policy
+CREATE POLICY "Group members can download files" 
+ON storage.objects FOR SELECT
+USING (
+    bucket_id = 'group-files' 
+    AND (
+        EXISTS (
+            SELECT 1 
+            FROM public.study_group_members sgm 
+            JOIN public.group_files gf ON gf.group_id = sgm.study_group_id
+            WHERE 
+                sgm.user_id = auth.uid() 
+                AND split_part(name, '/', 1) = sgm.study_group_id::text
+                AND gf.file_path = name
+        )
+        OR 
+        EXISTS (
+            SELECT 1 
+            FROM public.study_groups sg
+            JOIN public.group_files gf ON gf.group_id = sg.id
+            WHERE 
+                (NOT sg.is_private OR sg.owner_id = auth.uid())
+                AND split_part(name, '/', 1) = sg.id::text
+                AND gf.file_path = name
+        )
+    )
+);
+COMMIT;
+
+-- Storage policy for uploading files
+BEGIN;
+-- Drop existing policy if it exists
+DROP POLICY IF EXISTS "Group members can upload files" ON storage.objects;
+
+-- Create new policy
+CREATE POLICY "Group members can upload files" 
+ON storage.objects FOR INSERT
+WITH CHECK (
+    bucket_id = 'group-files' 
+    AND (
+        EXISTS (
+            SELECT 1 
+            FROM public.study_group_members sgm 
+            WHERE 
+                sgm.user_id = auth.uid() 
+                AND split_part(name, '/', 1) = sgm.study_group_id::text
+        )
+        OR 
+        EXISTS (
+            SELECT 1 
+            FROM public.study_groups sg 
+            WHERE 
+                sg.owner_id = auth.uid()
+                AND split_part(name, '/', 1) = sg.id::text
+        )
+    )
+);
+COMMIT;
