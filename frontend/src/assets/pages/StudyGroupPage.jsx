@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Users, MessageSquare, Video, Phone, Menu, X, UserPlus, ArrowLeft, Trash2, Search, XCircle, PaperclipIcon, File, Download, Maximize2, Eye } from 'lucide-react';
+import { Users, MessageSquare, Video, Phone, Menu, X, UserPlus, ArrowLeft, Trash2, Search, XCircle, PaperclipIcon, File, Download, Maximize2, Eye, CheckCircle, AlertCircle } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { CallModal } from '../../components/calls/CallModal';
@@ -34,6 +34,18 @@ const StudyGroupPage = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [searchResults, setSearchResults] = useState([]);
   const [currentResultIndex, setCurrentResultIndex] = useState(0);
+
+  // Toast notification state
+  const [toast, setToast] = useState(null);
+  
+  // Function to show toast
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type });
+    // Auto hide after 3 seconds
+    setTimeout(() => {
+      setToast(null);
+    }, 3000);
+  };
 
   // Function to navigate back to dashboard
   const handleBack = () => {
@@ -290,8 +302,12 @@ const StudyGroupPage = () => {
       if (fileInputRef.current) {
         fileInputRef.current.value = null;
       }
+
+      // Show toast
+      showToast('File uploaded successfully!');
     } catch (error) {
       console.error('Error uploading file:', error);
+      showToast(`Error uploading file: ${error.message}`, 'error');
       alert('Error uploading file. Please try again.');
     } finally {
       setUploadingFile(false);
@@ -1004,6 +1020,22 @@ const StudyGroupPage = () => {
           </div>
         )}
       </div>
+      
+      {/* Toast Notification */}
+      {toast && (
+        <div className={`fixed bottom-4 right-4 flex items-center p-4 rounded-lg shadow-lg z-50 transition-opacity duration-300 ${
+          toast.type === 'success' ? 'bg-green-50 text-green-800 border border-green-200' : 'bg-red-50 text-red-800 border border-red-200'
+        }`}>
+          <div className="mr-3">
+            {toast.type === 'success' ? (
+              <CheckCircle className="w-5 h-5 text-green-500" />
+            ) : (
+              <AlertCircle className="w-5 h-5 text-red-500" />
+            )}
+          </div>
+          <p className="text-sm font-medium">{toast.message}</p>
+        </div>
+      )}
     </div>
   );
 };
