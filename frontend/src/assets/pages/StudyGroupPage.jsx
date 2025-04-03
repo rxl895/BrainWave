@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Users, MessageSquare, Video, Phone, Menu, X, UserPlus, ArrowLeft, Trash2, Search, XCircle, PaperclipIcon, File, Download, Maximize2, Eye, CheckCircle, AlertCircle } from 'lucide-react';
+import { Users, MessageSquare, Video, Phone, Menu, X, UserPlus, ArrowLeft, Trash2, Search, XCircle, PaperclipIcon, File, Download, Maximize2, Eye, CheckCircle, AlertCircle, Bot } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { CallModal } from '../../components/calls/CallModal';
+import { AIAssistant } from '../../components/ai/AIAssistant';
 
 const StudyGroupPage = () => {
   const { id } = useParams();
@@ -37,6 +38,14 @@ const StudyGroupPage = () => {
 
   // Toast notification state
   const [toast, setToast] = useState(null);
+  
+  // AI Assistant state
+  const [showAIAssistant, setShowAIAssistant] = useState(false);
+  
+  // Function to toggle AI Assistant
+  const toggleAIAssistant = () => {
+    setShowAIAssistant(!showAIAssistant);
+  };
   
   // Function to show toast
   const showToast = (message, type = 'success') => {
@@ -587,14 +596,14 @@ const StudyGroupPage = () => {
                       lg:translate-x-0 transition-transform duration-300 ease-in-out
                       w-64 bg-[#F7EFE5] text-white p-4 flex flex-col fixed lg:relative h-full z-10`}>
         <div className="mb-6">
-          <h2 className="text-xl font-bold text-black">{group.name}</h2>
-          <p className="text-sm text-purple-600">{group.subject}</p>
+          <h2 className="text-xl font-bold text-black">{group?.name}</h2>
+          <p className="text-sm text-purple-600">{group?.subject}</p>
         </div>
 
         <div className="flex-1 overflow-y-auto">
           <h3 className="flex items-center gap-2 text-sm font-medium text-black mb-2">
             <Users size={16} />
-            MEMBERS ({users.length}/{group.max_participants})
+            MEMBERS ({users.length}/{group?.max_participants})
           </h3>
           <ul className="space-y-3">
             {users.map((user) => (
@@ -609,13 +618,13 @@ const StudyGroupPage = () => {
                 </div>
                 <span className="text-sm text-black">
                   {user.full_name || (user.id === user?.id ? 'You' : `User ${user.id.substring(0, 5)}`)}
-                  {user.id === group.owner_id && (
+                  {user.id === group?.owner_id && (
                     <span className="ml-2 text-xs bg-yellow-400 text-gray-800 px-1.5 rounded">owner</span>
                   )}
                   {user.role === 'admin' && (
                     <span className="ml-2 text-xs bg-purple-500 text-white px-1.5 rounded">admin</span>
                   )}
-                  {user.role === 'member' && user.id !== group.owner_id && (
+                  {user.role === 'member' && user.id !== group?.owner_id && (
                     <span className="ml-2 text-xs bg-blue-400 text-white px-1.5 rounded">member</span>
                   )}
                 </span>
@@ -623,7 +632,7 @@ const StudyGroupPage = () => {
             ))}
           </ul>
           
-          {!isUserMember && !group.is_private && (
+          {!isUserMember && !group?.is_private && (
             <button
               onClick={handleJoinGroup}
               disabled={joinLoading}
@@ -656,7 +665,7 @@ const StudyGroupPage = () => {
               </button>
               <button 
                 onClick={() => handleStartCall('video')}
-                className="flex items-center gap-2 w-full py-2 px-3 bg-gray-700 hover:bg-gray-600 rounded-md"
+                className="flex items-center gap-2 w-full py-2 px-3 bg-gray-700 hover:bg-gray-600 rounded-md mb-2"
               >
                 <Video size={16} />
                 <span>Video Call</span>
@@ -672,7 +681,7 @@ const StudyGroupPage = () => {
         <div className="bg-white border-b px-4 py-2 flex items-center justify-between shadow-sm">
           <div className="flex items-center">
             <MessageSquare className="w-5 h-5 text-purple-600 mr-2" />
-            <h2 className="font-bold text-black text-lg"># {group.name}</h2>
+            <h2 className="font-bold text-black text-lg"># {group?.name}</h2>
           </div>
           <div className="flex items-center gap-3">
             {isSearching ? (
@@ -751,6 +760,94 @@ const StudyGroupPage = () => {
             </button>
           </div>
         </div>
+
+        {/* Files button (now as a toggle button in header) */}
+        {isUserMember && (
+          <div className="bg-white border-b px-4 py-2 flex justify-between items-center">
+            <button
+              onClick={toggleFilesPanel}
+              className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm rounded transition-colors"
+            >
+              <File size={16} />
+              <span>{showFilesPanel ? 'Hide Files' : 'View Files'}</span>
+            </button>
+            
+            <button
+              onClick={toggleAIAssistant}
+              className="flex items-center gap-2 px-3 py-1.5 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 text-sm rounded transition-colors"
+            >
+              <Bot size={16} />
+              <span>{showAIAssistant ? 'Hide AI Assistant' : 'Show AI Assistant'}</span>
+            </button>
+          </div>
+        )}
+        
+        {/* Files panel (now inline instead of modal) */}
+        {isUserMember && showFilesPanel && (
+          <div className="bg-white border-b">
+            <div className="flex items-center justify-between px-4 py-2 border-b">
+              <h3 className="font-medium text-gray-800">Group Files</h3>
+              <span className="text-sm text-gray-500">{files.length} files</span>
+            </div>
+            
+            <div className="max-h-[200px] overflow-y-auto p-3">
+              {files.length === 0 ? (
+                <div className="text-center text-gray-500 py-4">
+                  <p className="text-sm">No files have been shared in this group yet.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  {files.map((file) => (
+                    <div key={file.id || file.name} className="border rounded-lg p-2 hover:bg-gray-50">
+                      <div className="flex justify-between items-start">
+                        <div className="flex items-center gap-2">
+                          <div className="bg-gray-200 p-1.5 rounded">
+                            <File size={18} className="text-gray-700" />
+                          </div>
+                          <div className="overflow-hidden">
+                            <p className="font-medium text-gray-900 text-sm truncate">{file.metadata.file_name || file.name}</p>
+                            <p className="text-xs text-gray-500">
+                              {(file.metadata.file_size || file.metadata.size) ? 
+                                formatFileSize(file.metadata.file_size || file.size) : ''}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex gap-1">
+                          <button 
+                            onClick={() => handleFilePreview(file)}
+                            className="p-1 text-gray-500 hover:text-purple-600 rounded"
+                            title="Preview file"
+                          >
+                            <Eye size={16} />
+                          </button>
+                          <a 
+                            href={file.url}
+                            download={file.metadata.file_name || file.name}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-1 text-gray-500 hover:text-purple-600 rounded"
+                            title="Download file"
+                          >
+                            <Download size={16} />
+                          </a>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+        
+        {/* AI Assistant component - now inline */}
+        {isUserMember && showAIAssistant && (
+          <AIAssistant 
+            groupId={id} 
+            isOpen={showAIAssistant} 
+            onToggle={toggleAIAssistant} 
+          />
+        )}
 
         {/* Messages area */}
         <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-white">
@@ -903,85 +1000,7 @@ const StudyGroupPage = () => {
           )}
         </div>
         
-        {/* Files button (fixed) */}
-        {isUserMember && (
-          <button
-            onClick={toggleFilesPanel}
-            className="fixed right-4 bottom-20 z-10 p-3 bg-purple-600 text-white rounded-full shadow-lg hover:bg-purple-700 transition-colors"
-            title="View group files"
-          >
-            <File size={20} />
-          </button>
-        )}
-        
-        {/* Files panel */}
-        {showFilesPanel && (
-          <div className="fixed inset-0 z-30 bg-black bg-opacity-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[80vh] flex flex-col">
-              <div className="flex items-center justify-between px-6 py-4 border-b">
-                <h3 className="text-xl font-semibold">Group Files</h3>
-                <button 
-                  onClick={toggleFilesPanel} 
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  <X size={24} />
-                </button>
-              </div>
-              
-              <div className="flex-1 overflow-y-auto p-6">
-                {files.length === 0 ? (
-                  <div className="text-center text-gray-500 py-8">
-                    <p>No files have been shared in this group yet.</p>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {files.map((file) => (
-                      <div key={file.id || file.name} className="border rounded-lg p-4 hover:bg-gray-50">
-                        <div className="flex justify-between items-start">
-                          <div className="flex items-center gap-3">
-                            <div className="bg-gray-200 p-2 rounded">
-                              <File size={24} className="text-gray-700" />
-                            </div>
-                            <div className="overflow-hidden">
-                              <p className="font-medium text-gray-900 truncate">{file.metadata.file_name || file.name}</p>
-                              <p className="text-sm text-gray-500">
-                                {(file.metadata.file_size || file.metadata.size) ? 
-                                  formatFileSize(file.metadata.file_size || file.size) : ''}
-                                {file.metadata.uploaded_at && 
-                                  ` · ${new Date(file.metadata.uploaded_at).toLocaleDateString()}`}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="flex gap-2">
-                            <button 
-                              onClick={() => handleFilePreview(file)}
-                              className="p-1 text-gray-500 hover:text-purple-600 hover:bg-purple-50 rounded"
-                              title="Preview file"
-                            >
-                              <Eye size={18} />
-                            </button>
-                            <a 
-                              href={file.url}
-                              download={file.metadata.file_name || file.name}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="p-1 text-gray-500 hover:text-purple-600 hover:bg-purple-50 rounded"
-                              title="Download file"
-                            >
-                              <Download size={18} />
-                            </a>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-        
-        {/* File preview modal */}
+        {/* File preview modal - keep this as a modal */}
         {filePreview && (
           <div className="fixed inset-0 z-40 bg-black bg-opacity-80 flex items-center justify-center p-4">
             <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
