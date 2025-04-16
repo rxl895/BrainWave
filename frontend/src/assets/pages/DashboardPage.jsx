@@ -28,7 +28,7 @@ const DashboardPage = () => {
       const { data, error } = await supabase
         .from('study_groups')
         .select('*')
-        .limit(6);
+        //.limit(6); remove limiter for now
 
       if (error) throw error;
       setGroups(data || []);
@@ -120,14 +120,16 @@ const DashboardPage = () => {
               ))}
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {groups.map((group) => (
-                <StudyGroupCard 
-                  key={group.id} 
-                  group={group} 
-                  onDelete={handleDeleteGroup}
-                />
-              ))}
+            <div className="max-h-[600px] overflow-y-auto pr-1">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {groups.map((group) => (
+                  <StudyGroupCard 
+                    key={group.id} 
+                    group={group} 
+                    onDelete={handleDeleteGroup}
+                  />
+                ))}
+              </div>
             </div>
           )}
         </section>

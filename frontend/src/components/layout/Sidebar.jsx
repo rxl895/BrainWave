@@ -26,7 +26,7 @@ export const Sidebar = () => {
       {/* Logo */}
       <div className="p-4">
         <Link to="/dash">
-          <img src={logo} alt="BrainWave" className="w-16 h-16" />
+          <img src={logo} alt="BrainWave" className="w-32 h-32" />
         </Link>
       </div>
 
