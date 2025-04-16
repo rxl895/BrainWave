@@ -5,9 +5,19 @@ import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { CallModal } from '../../components/calls/CallModal';
 import { AIAssistant } from '../../components/ai/AIAssistant';
+import {
+  createPeerConnection,
+  createOffer,
+  createAnswer,
+  setRemoteDescription,
+  addIceCandidate,
+} from '../../services/webrtcservices';
+import { useLocation } from 'react-router-dom';
+
 
 const StudyGroupPage = () => {
   const { id } = useParams();
+  const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
   const [group, setGroup] = useState(null);
@@ -22,7 +32,10 @@ const StudyGroupPage = () => {
   const [joinLoading, setJoinLoading] = useState(false);
   const messagesEndRef = React.useRef(null);
   const [deletingMessage, setDeletingMessage] = useState(null);
-  
+  const peers = {}; // key: userId, value: RTCPeerConnection
+  const [remoteStreams, setRemoteStreams] = useState({});
+
+
   // File sharing functionality
   const [files, setFiles] = useState([]);
   const [uploadingFile, setUploadingFile] = useState(false);
@@ -139,6 +152,51 @@ const StudyGroupPage = () => {
     scrollToBottom();
   }, [messages]);
 
+  const sendSignal = (type, data) => {
+    signalingChannel.send({
+      type: 'broadcast',
+      event: 'signal',
+      payload: {
+        sender: user.id,
+        signalType: type,
+        data,
+      },
+    });
+  };
+  
+  
+  let peer = null; // shared connection object
+  
+  const handleOffer = async (offer, senderId) => {
+    if (peers[senderId]) return; // already connected
+  
+    const connection = createPeerConnection((remoteStream) => {
+      setRemoteStreams((prev) => ({ ...prev, [participant.id]: remoteStream }));
+    });
+    
+  
+    peers[senderId] = connection;
+  
+    await setRemoteDescription(offer, connection);
+    const answer = await createAnswer(connection);
+    sendSignal('answer', { target: senderId, sdp: answer });
+  };
+  
+  const handleAnswer = async ({ target, sdp }) => {
+    const connection = peers[target];
+    if (connection) {
+      await setRemoteDescription(sdp, connection);
+    }
+  };
+  
+  const handleIceCandidate = async ({ target, candidate }) => {
+    const connection = peers[target];
+    if (connection) {
+      await addIceCandidate(candidate, connection);
+    }
+  };
+  
+  
   useEffect(() => {
     const fetchGroupDetails = async () => {
       try {
@@ -195,7 +253,66 @@ const StudyGroupPage = () => {
       }
     };
 
-    fetchGroupDetails();
+    fetchGroupDetails();   
+
+    // --- Setup Supabase signaling channel for WebRTC ---
+const signalingChannel = supabase.channel(`group-call-${id}`, {
+  config: {
+    broadcast: { self: true },
+  },
+});
+
+signalingChannel
+  .on('broadcast', { event: 'signal' }, ({ payload }) => {
+    const { sender, signalType, data } = payload;
+
+    if (sender === user.id) return; // Ignore self messages
+
+    switch (signalType) {
+      case 'offer':
+        handleOffer(data, sender); // 👈
+        break;
+      case 'answer':
+        handleAnswer(data); // 👈
+        break;
+      case 'ice-candidate':
+        handleNewICECandidate(data); // 👈
+        break;
+      default:
+        break;
+    }
+  })
+  .subscribe();
+
+  signalingChannel.on('presence', { event: 'sync' }, () => {
+    const state = signalingChannel.presenceState();
+    const activeUserIds = Object.keys(state).filter((id) => id !== user.id);
+  
+    for (const id of activeUserIds) {
+      if (!peers[id]) {
+        const connection = createPeerConnection((remoteStream) => {
+          setRemoteStreams((prev) => ({ ...prev, [id]: remoteStream }));
+        });
+        peers[id] = connection;
+        createOffer(connection).then((offer) => {
+          sendSignal('offer', { target: id, sdp: offer });
+        });
+      }
+    }
+  });
+  
+  signalingChannel.on('presence', { event: 'leave' }, ({ key }) => {
+    if (peers[key]) {
+      peers[key].close();
+      delete peers[key];
+      setRemoteStreams((prev) => {
+        const copy = { ...prev };
+        delete copy[key];
+        return copy;
+      });
+    }
+  });
+  
 
     // Subscribe to new messages
     const messagesSubscription = supabase
@@ -222,9 +339,32 @@ const StudyGroupPage = () => {
     return () => {
       supabase.removeChannel(messagesSubscription);
       supabase.removeChannel(presenceSubscription);
+      supabase.removeChannel(signalingChannel);
     };
   }, [id]);
 
+  useEffect(() => {
+    const startCallIfNeeded = async () => {
+      if (callActive && isUserMember) {
+        const otherUsers = users.filter((u) => u.id !== user.id);
+  
+        for (const participant of otherUsers) {
+          if (!peers[participant.id]) {
+            const connection = createPeerConnection((remoteStream) => {
+              setRemoteStreams((prev) => ({ ...prev, [participant.id]: remoteStream }));
+            });
+  
+            peers[participant.id] = connection;
+            const offer = await createOffer(connection);
+            sendSignal('offer', { target: participant.id, sdp: offer });
+          }
+        }
+      }
+    };
+  
+    startCallIfNeeded();
+  }, [callActive]);
+  
   // Function to fetch files for the group
   const fetchGroupFiles = async () => {
     try {
@@ -378,9 +518,17 @@ const StudyGroupPage = () => {
     }
   };
 
-  const handleStartCall = (type) => {
-    setCallType(type);
+  const handleStartCall = async () => {
+    setCallType('video');
     setCallActive(true);
+  
+    const connection = createPeerConnection((remoteStream) => {
+      setRemoteStreams((prev) => ({ ...prev, [participant.id]: remoteStream }));
+    });
+    
+  
+    const offer = await createOffer();
+    sendSignal('offer', offer);
   };
 
   const handleJoinGroup = async () => {
@@ -579,6 +727,8 @@ const StudyGroupPage = () => {
         onClose={() => setCallActive(false)} 
         callType={callType}
         groupName={group?.name || 'Study Group'}
+        remoteStreams={remoteStreams}
+        currentUserId={user.id}
       />
 
       {/* Mobile sidebar toggle */}
