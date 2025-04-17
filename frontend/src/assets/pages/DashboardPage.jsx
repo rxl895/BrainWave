@@ -18,6 +18,7 @@ const DashboardPage = () => {
     is_private: false,
     meeting_link: ''
   });
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     fetchGroups();
@@ -78,6 +79,10 @@ const DashboardPage = () => {
     setGroups(groups.filter(group => group.id !== groupId));
   };
 
+  const filteredGroups = groups.filter(group =>
+    group.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   return (
     <div className="flex min-h-screen bg-gray-50">
       <Sidebar />
@@ -92,6 +97,8 @@ const DashboardPage = () => {
                 type="text"
                 placeholder="Search for a Course"
                 className="pl-10 pr-4 py-2 rounded-full bg-purple-50 border-none w-64 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
               />
               <Search className="absolute left-3 top-2.5 text-gray-400" size={20} />
             </div>
@@ -122,7 +129,7 @@ const DashboardPage = () => {
           ) : (
             <div className="max-h-[600px] overflow-y-auto pr-1">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {groups.map((group) => (
+                {filteredGroups.map((group) => (
                   <StudyGroupCard 
                     key={group.id} 
                     group={group} 
