@@ -57,6 +57,62 @@ These SQL files serve as valuable documentation of our data structure, which we'
 - Access control policies
 - Trigger functions for automated actions
 
+## 🏗️ Architecture
+
+![Architecture diagram](images/architecture%20design.jpeg)
+
+## 👥 Team and Contributions
+
+### Core Team
+
+- **Andrew Xue** - *Frontend Architecture+UI/UX Design*
+  - Frontend Architecture
+  - Created user interface designs
+  - Implemented responsive layouts
+  - Developed testing strategy
+
+- **Taranveer Anand** - *Backend Integration*
+  - Designed database schema
+  - Implemented WebRTC for calls
+  - Managed authentication flows
+
+- **Vedant Gupta** - *UI/UX Design Lead*
+  - Designed database schema
+  - Implemented Supabase integration
+  - Managed user experience testing
+
+- **Ritika Lamba** - *Frontend Architecture+AI Integration*
+  - AI integration(Graduate Feature)
+  - Implemented Core UI features
+
+## 📝 Development Retrospective
+### What Worked Well
+1. **Switching to Supabase**
+   - Reduced backend maintenance
+   - Improved real-time capabilities
+   - Faster development cycle
+
+2. **Agile Methodology**
+   - Weekly sprints kept us on track
+   - Regular feedback improved features
+   - Flexible to requirement changes
+
+### Areas for Improvement
+1. **Initial Architecture Planning**
+   - Should have started with Supabase
+   - Could have avoided Python backend migration
+   - Better initial tech stack research needed
+
+2. **Testing Strategy**
+   - Earlier implementation of testing
+   - More comprehensive test coverage
+   - Better integration testing
+
+3. **Time Management**
+   - More realistic sprint planning
+   - Better feature prioritization
+   - Earlier start on documentation
+
 ## ⚡ Installation & Setup
 1. **Clone the Repository**  
    ```bash
@@ -153,7 +209,8 @@ When we're ready to deploy, we'll need to:
    VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
    VITE_APP_URL=your_production_url
    ```
-3. Configure custom domain (optional)
+3. Set up continuous deployment from our main branch
+4. Configure custom domain (optional)
 
 ### Backend Infrastructure
 Our backend is already deployed and managed by Supabase, providing:
@@ -163,6 +220,33 @@ Our backend is already deployed and managed by Supabase, providing:
 - File storage
 - Automatic backups
 
+MIT License
+
+Copyright (c) 2024 BrainWave Team (Andrew Xue, Taranveer Anand, Vedant Gupta, Ritika Lamba)
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+For inquiries about licensing or usage, please contact:
+- Andrew Xue (ahx2@case.edu)
+- Taranveer Anand (tsa43@case.edu)
+- Vedant Gupta (vxg247@case.edu)
+- Ritika Lamba (rxl895@case.edu)
 
 
 
